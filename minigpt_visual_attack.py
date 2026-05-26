@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/teamspace/studios/this_studio")
+import patch
 # 1. Download Vicuna's weights to ./models   (it's a delta version)
 # 2. Download LLaMA's weight via: https://huggingface.co/huggyllama/llama-13b/tree/main
 # 3. merge them and setup config
@@ -111,13 +114,13 @@ if not args.constrained:
 
 
     adv_img_prompt = my_attacker.attack_unconstrained(text_prompt_template,
-                                                            img=img, batch_size=1,
-                                                            num_iter=5000, alpha=args.alpha/255)
+                                                            img=img, batch_size=4,
+                                                            num_iter=500, alpha=args.alpha/255)
 
 else:
     adv_img_prompt = my_attacker.attack_constrained(text_prompt_template,
-                                                            img=img, batch_size= 1,
-                                                            num_iter=5000, alpha=args.alpha / 255,
+                                                            img=img, batch_size= 4,
+                                                            num_iter=500, alpha=args.alpha / 255,
                                                             epsilon=args.eps / 255)
 
 save_image(adv_img_prompt, '%s/bad_prompt.bmp' % args.save_dir)

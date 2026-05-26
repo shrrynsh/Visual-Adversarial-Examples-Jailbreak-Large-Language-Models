@@ -8,7 +8,7 @@ import torch.nn as nn
 from minigpt4.common.registry import registry
 from minigpt4.models.blip2 import Blip2Base, disabled_train
 from minigpt4.models.modeling_llama import LlamaForCausalLM
-from transformers import LlamaTokenizer
+from transformers import BitsAndBytesConfig, LlamaTokenizer
 
 
 @registry.register_model("mini_gpt4")
@@ -88,15 +88,23 @@ class MiniGPT4(Blip2Base):
         self.llama_tokenizer.pad_token = self.llama_tokenizer.eos_token
 
         if self.low_resource:
+            quantization_config = BitsAndBytesConfig(
+                load_in_8bit=True,
+                llm_int8_threshold=6.0,
+                llm_int8_has_fp16_weight=False,
+            )
             self.llama_model = LlamaForCausalLM.from_pretrained(
                 llama_model,
+                low_cpu_mem_usage=True,
                 torch_dtype=torch.float16,
                 load_in_8bit=True,
-                device_map={'': device_8bit}
+                device_map={"": device_8bit},
+                quantization_config=quantization_config,
             )
         else:
             self.llama_model = LlamaForCausalLM.from_pretrained(
                 llama_model,
+                low_cpu_mem_usage=True,
                 torch_dtype=torch.float16,
             )
 
@@ -163,6 +171,14 @@ class MiniGPT4(Blip2Base):
             return wrapped_img_embeds, wrapped_atts_img
         else:
             return img_embeds, atts_img
+
+    def to(self, *args, **kwargs):
+        # Prevent llama_model from being moved to another device (e.g. 8-bit weights crash)
+        llama_model = self._modules.pop("llama_model", None)
+        super().to(*args, **kwargs)
+        if llama_model is not None:
+            self._modules["llama_model"] = llama_model
+        return self
 
     def forward(self, samples):
 
